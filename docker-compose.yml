@@ -1,0 +1,98 @@
+version: '2'
+services:
+#    db2:
+#        image: mongo:3.0
+#        ports:
+#          - "27017:27017"
+
+    web:
+        restart: always
+        build: .
+        expose:
+          - '8000'
+        links:
+          - redis:redis
+#          - elasticsearch
+#          - db2
+        volumes:
+          - .:/app
+          - /usr/src/app
+          - /usr/src/app/static
+
+        env_file: .env
+        environment:
+          DEBUG: 'true'
+#        command: python manage.py runserver 0.0.0.0:8000
+#        command: /usr/local/bin/uwsgi --http :8000 --module celery_redis.wsgi
+        command: "/usr/local/bin/gunicorn webcrawl.wsgi:application -w 2 -b :8000"
+
+    nginx:
+        restart: always
+        build: ./nginx/
+        ports:
+          - "80:80"
+        volumes:
+          - /www/static
+        volumes_from:
+          - web
+        links:
+          - web:web
+        depends_on:
+          - web
+
+    redis:
+        restart: always
+        image: 'redis'
+        environment:
+            - CELERY_BROKER_URL=redis://redis/0
+            - CELERY_BACKEND_URL=redis://redis/0
+        ports:
+            - 6479:6379
+
+    worker:
+        build:
+            context: .
+#            dockerfile: dockerfile
+#        command: celery -A webcrawl worker -B --loglevel=info
+        command: celery -A webcrawl worker -B -l info
+        volumes:
+            - .:/app
+        links:
+            - redis
+            - web
+        depends_on:
+            - redis
+
+    beat:
+        build:
+            context: .
+        image: 'websource'
+        command: celery -A webcrawl beat --pidfile= -l debug
+        volumes:
+            - .:/app
+        links:
+            - redis
+            - web
+        depends_on:
+            - redis
+
+    elasticsearch:
+        image: elasticsearch
+        # command: elasticsearch -Des.network.host=0.0.0.0
+        ports:
+          - 9200:9200
+        volumes:
+#          - ./Elasticsearch/data:/var/lib/elasticsearch
+          - ./Elasticsearch/data:/usr/share/elasticsearch/data
+          - ./Elasticsearch/config/elasticsearch.yml:/etc/elasticsearch/config/elasticsearch.yml
+
+    kibana:
+        image: kibana
+        ports:
+            - 5601:5601
+        depends_on:
+            - elasticsearch
+        links:
+            - elasticsearch
+#        expose:
+#          - '5601'
