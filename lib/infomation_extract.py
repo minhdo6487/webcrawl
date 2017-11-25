@@ -53,6 +53,7 @@ class extract_data:
             self.html_views = self._config.get(path_url, 'html_views')
             self.html_pagination = self._config.get(path_url, 'html_pagination')
             self.html_main_topic = self._config.get(path_url,'html_main_topic')
+            self.html_link = self._config.get(path_url, 'html_link')
 
         except Exception as e:
             print (e)
@@ -225,22 +226,19 @@ class extract_data:
                             views = (index_tag_info.find(html_views.keys()[0], html_views.values()[0]).text.replace('\n',''))
 
                             '''
+                            reg pattern for link, and get info inside
+                            '''
+                            link = index_tag_info.find('a').get('href')
+                            soup_in_link = extract_data.get_soup_in_sublink(link)
+
+
+                            '''
                             clean and make correct format for NoSQL to ESearch db
                             '''
                             # resp_body = {}
 
 
                             if comments == views and self.target_url == "http://www.webtretho.com/forum/":
-
-                                # print(json.dumps({
-                                #     'user': list_info,
-                                #     'html_main': html_main,
-                                #     'title': title.replace('\n', ''),
-                                #     'views': extract_data.change_char2num(
-                                #         re.sub('Lượt đọc', '', comments.split('    ')[0])),
-                                #     'comments': extract_data.change_char2num(
-                                #         re.sub('Trả lời', '', comments.split('    ')[1])),
-                                # }, indent=4, encoding='utf-8'))
 
                                 resp_weekly = {
                                     'user': list_info,
@@ -255,20 +253,8 @@ class extract_data:
 
                                 UP.create(data)
                                 print (data)
-                                # with codecs.open(new_dir + '/' + name_file + '.csv','a','utf-8' ) as fp:
-                                #     fp.write(u'{},{},{},{}\n'.format(html_main, title.replace('\n', ''),
-                                #                                      extract_data.change_char2num(re.sub('Lượt đọc', '', comments.split('    ')[0])),
-                                #                                      extract_data.change_char2num(re.sub('Trả lời', '', comments.split('    ')[1]))))
 
                             else:
-                                # print(json.dumps({
-                                #     'user': list_info,
-                                #     'html_main': html_main,
-                                #     'title': title.replace('\n', ''),
-                                #     'views': extract_data.change_char2num(re.sub('Trả lời:|Trả lời|Xem', '', comments)),
-                                #     'comments': extract_data.change_char2num(re.sub('Xem:|Xem|Đọc|Đọc:', '', views)),
-                                # }, indent=4, encoding='utf-8'))
-
                                 resp_weekly = {
                                     'user': list_info,
                                     'html_main': html_main,
@@ -280,10 +266,6 @@ class extract_data:
 
                                 UP.create(data)
                                 print (data)
-                                # with codecs.open(new_dir + '/' + name_file + '.csv','a','utf-8' ) as fp:
-                                #     fp.write(u'{},{},{},{}\n'.format(html_main, title.replace('\n', ''),
-                                #                                      extract_data.change_char2num(re.sub('Trả lời:|Trả lời|Xem', '', comments)),
-                                #                                      extract_data.change_char2num(re.sub('Xem:|Xem|Đọc|Đọc:', '', views))))
 
                         except Exception as e:
                             print(e)
@@ -304,13 +286,6 @@ class extract_data:
                         views = (tag_info.find(html_views.keys()[0], html_views.values()[0]).text)
 
                         if comments == views and self.target_url == "http://www.webtretho.com/forum/":
-                            # print(json.dumps({
-                            #     'user': list_info,
-                            #     'html_main': html_main,
-                            #     'title': title.replace('\n', ''),
-                            #     'views': extract_data.change_char2num(re.sub('Lượt đọc', '', comments.split('    ')[0])),
-                            #     'comments': extract_data.change_char2num(re.sub('Trả lời', '', comments.split('    ')[1])),
-                            # }, indent=4, encoding='utf-8'))
 
                             resp_weekly = {
                                 'user': list_info,
@@ -325,19 +300,8 @@ class extract_data:
 
                             UP.create(data)
                             print (data)
-                            # with codecs.open(new_dir + '/' + name_file + '.csv', 'a', 'utf-8') as fp:
-                            #     fp.write(u'{},{},{},{}\n'.format(html_main, title.replace('\n', ''),
-                            #                                      extract_data.change_char2num(re.sub('Lượt đọc', '', comments.split('    ')[0])),
-                            #                                      extract_data.change_char2num(re.sub('Trả lời', '', comments.split('    ')[1]))))
 
                         else:
-                            # print(json.dumps({
-                            #     'user': list_info,
-                            #     'html_main': html_main,
-                            #     'title': title.replace('\n', ''),
-                            #     'views': extract_data.change_char2num(re.sub('Trả lời:|Trả lời|Xem', '', comments)),
-                            #     'comments': extract_data.change_char2num(re.sub('Xem:|Xem|Đọc|Đọc:', '', views)),
-                            # }, indent=4, encoding='utf-8'))
 
                             resp_weekly = {
                                 'user': list_info,
@@ -350,10 +314,6 @@ class extract_data:
 
                             UP.create(data)
                             print (data)
-                            # with codecs.open(new_dir + '/' + name_file + '.csv', 'a', 'utf-8') as fp:
-                            #     fp.write(u'{},{},{},{}\n'.format(html_main, title.replace('\n', ''),
-                            #                                      extract_data.change_char2num(re.sub('Trả lời:|Trả lời|Xem', '', comments)),
-                            #                                      extract_data.change_char2num(re.sub('Xem:|Xem|Đọc|Đọc:', '', views))))
 
                     except Exception as e:
                         print (e)
@@ -391,12 +351,18 @@ class extract_data:
                 try:
                     list_info.append(zzz.text.replace('\n', ''))
                 except Exception as e: pass
-        ################## clean => to json ###################
-        # for iii in list_info:
-        #     print ([jjj.text for jjj in iii.find_all('dt') ])
-        #     print ([jjj.text for jjj in iii.find_all('dd') ])
-        #     # print ('{} ---- {}'.format(iii.find('dt').text.replace('\n',' '), iii.find('dd').text.replace('\n',' ')))
         return list_info
+
+    @classmethod
+    def info_in_post(cls, soup):
+        """
+        :param soup:
+            extract HEAD info [dia phuong, tinh trang, gia, ..., dia cih, thong tin]
+            extract full detail
+        :return:
+        """
+        pass
+
 
 class extract_feed:
     def __init__(self, url):
