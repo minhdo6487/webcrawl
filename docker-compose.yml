@@ -85,7 +85,10 @@ services:
 #          - ./Elasticsearch/data:/var/lib/elasticsearch
           - ./Elasticsearch/data:/usr/share/elasticsearch/data
           - ./Elasticsearch/config/elasticsearch.yml:/etc/elasticsearch/config/elasticsearch.yml
-
+        environment:
+          - cluster.name=docker-cluster
+          - bootstrap.memory_lock=true
+          - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     kibana:
         image: kibana
         ports:
