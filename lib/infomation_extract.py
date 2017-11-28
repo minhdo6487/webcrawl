@@ -228,10 +228,19 @@ class extract_data:
                             '''
                             reg pattern for link, and get info inside
                             '''
-                            link = index_tag_info.find('a').get('href')
-                            soup_in_link = extract_data.get_soup_in_sublink(link)
+                            links = index_tag_info.find_all('a')
+                            for tmp_link in links:
+                                if "threads" in tmp_link.get('href'):
+                                    link = tmp_link.get('href')
 
-
+                                    soup_in_link = extract_data.get_soup_in_sublink(os.path.join(self.target_url, link))
+                                    user_info_inPost = extract_data.info_in_post(soup_in_link)
+                                    break
+                                else:
+                                    continue
+                                # else:
+                                #     user_info_inPost = ""
+                                #     continue
                             '''
                             clean and make correct format for NoSQL to ESearch db
                             '''
@@ -242,6 +251,7 @@ class extract_data:
 
                                 resp_weekly = {
                                     'user': list_info,
+                                    'user_more_info': user_info_inPost,
                                     'html_main': html_main,
                                     'title': title.replace('\n', ''),
                                     'views': extract_data.change_char2num(
@@ -257,6 +267,7 @@ class extract_data:
                             else:
                                 resp_weekly = {
                                     'user': list_info,
+                                    'user_more_info': user_info_inPost,
                                     'html_main': html_main,
                                     'title': title.replace('\n', ''),
                                     'views': extract_data.change_char2num(re.sub('Trả lời:|Trả lời|Xem', '', comments)),
@@ -285,10 +296,26 @@ class extract_data:
                         comments =  (tag_info.find(html_comment.keys()[0], html_comment.values()[0]).text)
                         views = (tag_info.find(html_views.keys()[0], html_views.values()[0]).text)
 
+                        '''
+                            reg pattern for link, and get info inside
+                        '''
+                        links = tag_info.find_all('a')
+                        for tmp_link in links:
+                            if "threads" in tmp_link.get('href'):
+                                link = tmp_link.get('href')
+
+                                soup_in_link = extract_data.get_soup_in_sublink(os.path.join(self.target_url,link))
+                                user_info_inPost = extract_data.info_in_post(soup_in_link)
+                                break
+                            else:
+                                continue
+                                # user_info_inPost = ""
+
                         if comments == views and self.target_url == "http://www.webtretho.com/forum/":
 
                             resp_weekly = {
                                 'user': list_info,
+                                'user_more_info': user_info_inPost,
                                 'html_main': html_main,
                                 'title': title.replace('\n', ''),
                                 'views': extract_data.change_char2num(
@@ -305,6 +332,7 @@ class extract_data:
 
                             resp_weekly = {
                                 'user': list_info,
+                                'user_more_info': user_info_inPost,
                                 'html_main': html_main,
                                 'title': title.replace('\n', ''),
                                 'views': extract_data.change_char2num(re.sub('Trả lời:|Trả lời|Xem', '', comments)),
@@ -355,13 +383,42 @@ class extract_data:
 
     @classmethod
     def info_in_post(cls, soup):
-        """
-        :param soup:
-            extract HEAD info [dia phuong, tinh trang, gia, ..., dia cih, thong tin]
-            extract full detail
-        :return:
-        """
-        pass
+        # """
+        # :param soup:
+        #     extract HEAD info [dia phuong, tinh trang, gia, ..., dia cih, thong tin]
+        #     extract full detail
+        # :return:
+        # """
+        main_info = soup.find('div', {'class': 'secondaryContent'})
+        data = {}
+        for item in main_info.find_all('tr'):
+            # main_info_key = re.sub(r'[\n\s]+', ' ', item.find('th').text.encode('utf-8'))
+            main_info_key = re.sub(r'[\n\s]+', ' ', item.find('th').text)
+            # print (main_info_key)
+            # main_info_value = re.sub(r'[\n\s]+', ' ', item.find('td').text.encode('utf-8'))
+            main_info_value = re.sub(r'[\n\s]+', ' ', item.find('td').text)
+            # print (main_info_value)
+            # data.update({main_info_key: main_info_value})
+            data.update({main_info_key: main_info_value})
+            # print (data)
+        # ------------------ done get main info of user -------------------------------- #
+
+        main_description = soup.find('blockquote',
+                                         {'class': ['messageText', 'SelectQuoteContainer', 'ugc baseHtml']})
+
+        phone_number = [re.sub(r'[\n\s]+', ' ', number) for number in
+                        re.findall(r'[hotline|zalo|viber||liên hệ|mình|sđt|sdt|\s\:]+([0|84][1|9|2|8][0-9\.\-\s]+)',
+                                   main_description.text, re.I | re.U) if len(number) >= 8 and "-" not in number]
+        # remove duplicate
+        phone_number = list(set(phone_number))
+
+        email = [re.sub(r'[\n\s]+', ' ', number) for number in
+                 re.findall(r'[\:\s]+([A-z0-9\.\_\-]+@[A-z0-9\.\_\-]+)', main_description.text, re.I | re.U)]
+
+        data.update({'phone_number': phone_number})
+        data.update({'email': email})
+        # data.update({'description': main_description.text})
+        return data
 
 
 class extract_feed:
@@ -464,64 +521,13 @@ class extract_feed:
                         'comment': comment
                     }
                 )
-
-                # print (json.dumps(
-                #     {
-                #         'sub_link': new_link,
-                #         'title': title,
-                #         'time_create': time_create,
-                #         'guild': guild,
-                #         'author': author,
-                #         'creator': creator,
-                #         'comment': comment
-                #     }, encoding='utf-8'
-                # ))
             index_sub += 1
 
             data.update({"resp_daily_feed": resp_daily_feed})
 
             RC = RuleCrawl()
             RC.create(data)
-            # time.sleep(5)
         return data
-
-# def main(url, dirpath):
-#
-#     if not os.path.exists(os.path.join(os.getcwd() , dirpath)):
-#         print (True, "chua ton tai")
-#         os.makedirs(dirpath)
-#         print ("Create new path dir")
-#         new_dir = os.path.join(os.getcwd() , dirpath)
-#     else:
-#         print ("da ton tai")
-#         new_dir = os.path.join(os.getcwd() , dirpath)
-#
-#
-#     eA = extract_data(url)
-#     target_url = eA.target_url
-#     all_sublink = eA.all_sublink
-#     tmp = eA.get_all_sub_link
-#     timestamp = '{:%H%M%S_%Y%m%d}_'.format(datetime.datetime.now())
-#     '''
-#     format:
-#         hhmmss_yymmdd
-#         hh: hour
-#         mm: minutes:
-#         ss: second
-#         yy: year
-#         mm: month
-#         dd: date
-#     '''
-#
-#     reg_pattern = re.compile(r'(tinhte|webtretho|nhattao|5giay|bkvn|muare|otofun|gsm|2banh)+')
-#     path_url = re.findall(reg_pattern, url)[0]
-#     name_file = timestamp + path_url
-#     HEADER = (u'main_topic', u'title', u'comment', u'view')
-#
-#     with codecs.open(new_dir + '/' + name_file +  '.csv', 'a', 'utf-8') as fp:
-#         fp.write(u'{}\n'.format(url))
-#         fp.write(u'{}\n'.format(u','.join(HEADER)))
-#     eA.get_info(tmp)
 
 
 if __name__ == '__main__':
@@ -540,12 +546,6 @@ if __name__ == '__main__':
     # url = "https://nhattao.com/"
     # ef = extract_feed(url)
     # ef.get_feed()
-    url = "https://nhattao.com/"
-    ea = extract_data(url)
-    tmp = ea.get_all_sub_link
-    ea.get_info(tmp)
-
-
     '''
     json form 
     data = \
