@@ -208,7 +208,7 @@ CELERYBEAT_SCHEDULE = {
     'task-crawl-data': {
             'task': 'api.crawlingManage.tasks.crawl_data',
             # 'schedule': crontab(),
-            'schedule': timedelta(seconds=600),
+            'schedule': timedelta(seconds=900),
             # 'args': (*args)
         }
 }
